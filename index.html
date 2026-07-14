@@ -184,6 +184,17 @@
       touch-action: manipulation;
     }
 
+    .icon {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      pointer-events: none;
+    }
+
     .slot-shadow,
     .slot-edge,
     .slot-front {
@@ -291,8 +302,8 @@
         if (pad.slots.length > 1) {
           const slots = document.createElement("div");
           slots.className = "slots";
-          slots.appendChild(createSlotButton("<", "Previous sound", () => cycle(index, -1)));
-          slots.appendChild(createSlotButton(">", "Next sound", () => cycle(index, 1)));
+          slots.appendChild(createSlotButton("chevron-left", "Previous sound", () => cycle(index, -1)));
+          slots.appendChild(createSlotButton("chevron-right", "Next sound", () => cycle(index, 1)));
           card.appendChild(slots);
         }
 
@@ -300,12 +311,21 @@
       });
     }
 
-    function createSlotButton(text, label, handler) {
+    const icons = {
+      "chevron-left": '<path d="m15 18-6-6 6-6"/>',
+      "chevron-right": '<path d="m9 18 6-6-6-6"/>'
+    };
+
+    function icon(name) {
+      return '<svg class="icon icon-' + name + '" viewBox="0 0 24 24" aria-hidden="true">' + (icons[name] || "") + '</svg>';
+    }
+
+    function createSlotButton(iconName, label, handler) {
       const button = document.createElement("button");
       button.className = "slot-btn";
       button.type = "button";
       button.innerHTML = '<span class="slot-shadow"></span><span class="slot-edge"></span><span class="slot-front"></span>';
-      button.querySelector(".slot-front").textContent = text;
+      button.querySelector(".slot-front").innerHTML = icon(iconName);
       button.setAttribute("aria-label", label);
       button.addEventListener("click", handler);
       addPressMotion(button);
