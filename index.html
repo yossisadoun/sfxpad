@@ -63,6 +63,7 @@
       background: transparent;
       cursor: pointer;
       outline-offset: 5px;
+      touch-action: manipulation;
       user-select: none;
       transition: filter 180ms ease;
     }
@@ -73,11 +74,19 @@
 
     .pad-shadow,
     .pad-edge,
-    .pad-front {
+    .pad-front,
+    .slot-shadow,
+    .slot-edge,
+    .slot-front {
       position: absolute;
       inset: 0;
-      border-radius: 12px;
       pointer-events: none;
+    }
+
+    .pad-shadow,
+    .pad-edge,
+    .pad-front {
+      border-radius: 12px;
     }
 
     .pad-shadow {
@@ -110,12 +119,14 @@
       transition: transform 500ms cubic-bezier(.3, .7, .4, 1);
     }
 
-    .pad:active .pad-front {
+    .pad:active .pad-front,
+    .pad.is-pressing .pad-front {
       transform: translateY(-2px);
       transition: transform 34ms;
     }
 
-    .pad:active .pad-shadow {
+    .pad:active .pad-shadow,
+    .pad.is-pressing .pad-shadow {
       transform: translateY(1px);
       transition: transform 34ms;
     }
@@ -157,23 +168,65 @@
     }
 
     .slot-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      position: relative;
+      display: block;
       width: 34px;
       height: 34px;
-      border: 1px solid #e5e7ee;
+      padding: 0;
+      border: 0;
       border-radius: 999px;
       color: var(--ink);
-      background: #fff;
-      box-shadow: 0 4px 12px rgba(23, 28, 40, 0.08);
+      background: transparent;
       cursor: pointer;
       font-size: 17px;
       font-weight: 800;
+      outline-offset: 4px;
+      touch-action: manipulation;
     }
 
-    .slot-btn:active {
+    .slot-shadow,
+    .slot-edge,
+    .slot-front {
+      border-radius: 999px;
+    }
+
+    .slot-shadow {
+      background: rgba(23, 28, 40, 0.13);
+      filter: blur(2px);
+      transform: translateY(4px);
+      transition: transform 500ms cubic-bezier(.3, .7, .4, 1);
+    }
+
+    .slot-edge {
+      background: linear-gradient(
+        to left,
+        #d4d7e1 0%,
+        #eceef4 8%,
+        #eceef4 92%,
+        #d4d7e1 100%
+      );
+    }
+
+    .slot-front {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #eceef4;
+      background: linear-gradient(180deg, #ffffff 0%, #f4f5f8 100%);
+      transform: translateY(-5px);
+      transition: transform 500ms cubic-bezier(.3, .7, .4, 1);
+    }
+
+    .slot-btn:active .slot-front,
+    .slot-btn.is-pressing .slot-front {
+      transform: translateY(-1px);
+      transition: transform 34ms;
+    }
+
+    .slot-btn:active .slot-shadow,
+    .slot-btn.is-pressing .slot-shadow {
       transform: translateY(1px);
+      transition: transform 34ms;
     }
 
     .toast {
@@ -231,6 +284,7 @@
         button.querySelector(".label").textContent = pad.label;
         button.querySelector(".sound").textContent = sound.name;
         button.addEventListener("click", () => playPad(index));
+        addPressMotion(button);
 
         card.appendChild(button);
 
@@ -250,10 +304,20 @@
       const button = document.createElement("button");
       button.className = "slot-btn";
       button.type = "button";
-      button.textContent = text;
+      button.innerHTML = '<span class="slot-shadow"></span><span class="slot-edge"></span><span class="slot-front"></span>';
+      button.querySelector(".slot-front").textContent = text;
       button.setAttribute("aria-label", label);
       button.addEventListener("click", handler);
+      addPressMotion(button);
       return button;
+    }
+
+    function addPressMotion(button) {
+      button.addEventListener("pointerdown", () => button.classList.add("is-pressing"));
+      button.addEventListener("pointerup", () => button.classList.remove("is-pressing"));
+      button.addEventListener("pointercancel", () => button.classList.remove("is-pressing"));
+      button.addEventListener("pointerleave", () => button.classList.remove("is-pressing"));
+      button.addEventListener("blur", () => button.classList.remove("is-pressing"));
     }
 
     function cycle(index, direction) {
