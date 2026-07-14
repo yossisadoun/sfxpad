@@ -110,8 +110,8 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 14px;
-      padding: 14px;
+      gap: 8px;
+      padding: 10px;
       border: 1px solid #dceee5;
       background: linear-gradient(180deg, #ffffff 0%, var(--green-soft) 100%);
       transform: translateY(-6px);
@@ -146,16 +146,20 @@
 
     .label {
       color: #000;
-      font-size: clamp(18px, 5vw, 25px);
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      font-size: var(--label-size, clamp(13px, 3.9vw, 18px));
       font-weight: 760;
-      line-height: 1.08;
+      line-height: 1.04;
+      overflow-wrap: anywhere;
     }
 
     .sound {
       color: #5f6675;
-      font-size: clamp(12px, 3.4vw, 15px);
+      font-size: var(--sound-size, clamp(10px, 2.8vw, 12px));
       font-weight: 680;
-      line-height: 1.2;
+      line-height: 1.12;
       white-space: nowrap;
     }
 
@@ -292,8 +296,11 @@
         button.type = "button";
         button.setAttribute("aria-label", pad.label + ", " + sound.name);
         button.innerHTML = '<span class="pad-shadow"></span><span class="pad-edge"></span><span class="pad-front"><span class="label"></span><span class="sound"></span></span>';
-        button.querySelector(".label").textContent = pad.label;
-        button.querySelector(".sound").textContent = sound.name;
+        const labelEl = button.querySelector(".label");
+        const soundEl = button.querySelector(".sound");
+        labelEl.textContent = pad.label;
+        soundEl.textContent = sound.name;
+        fitPadText(button, pad.label, sound.name);
         button.addEventListener("click", () => playPad(index));
         addPressMotion(button);
 
@@ -307,8 +314,24 @@
           card.appendChild(slots);
         }
 
-        grid.appendChild(card);
+      grid.appendChild(card);
       });
+    }
+
+    function fitPadText(button, label, soundName) {
+      const labelLength = readableLength(label);
+      const soundLength = readableLength(soundName);
+      const labelSize = labelLength <= 10 ? 17 : labelLength <= 16 ? 15 : labelLength <= 24 ? 13 : 11.5;
+      const soundSize = soundLength <= 14 ? 12 : soundLength <= 24 ? 11 : 10;
+      button.style.setProperty("--label-size", labelSize + "px");
+      button.style.setProperty("--sound-size", soundSize + "px");
+    }
+
+    function readableLength(value) {
+      const text = String(value || "").trim();
+      const words = text.split(/\s+/);
+      const longestWord = words.reduce((longest, word) => Math.max(longest, word.length), 0);
+      return Math.max(text.length, longestWord * 1.35);
     }
 
     const icons = {
