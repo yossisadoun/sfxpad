@@ -157,11 +157,6 @@
       pointer-events: none;
     }
 
-    .pad.is-pressing {
-      transform: translateY(2px) scale(0.985);
-      transition: transform 34ms cubic-bezier(.2, .9, .3, 1);
-    }
-
     .surface {
       position: absolute;
       inset: 0;
@@ -326,7 +321,7 @@
       pointer-events: none;
       opacity: 0;
       transform: translate(-50%, -50%) scale(0.08);
-      animation: bloom-anim 200ms cubic-bezier(.16, .84, .24, 1) forwards;
+      animation: bloom-anim 110ms cubic-bezier(.16, .84, .24, 1) forwards;
     }
 
     @keyframes bloom-anim {
@@ -478,11 +473,9 @@
         surface.title = pad.label + " - " + sound.name;
         fitPadText(tile, pad.label);
         surface.addEventListener("pointerdown", (event) => {
-          startPress(tile);
           spawnBloom(tile, event.clientX, event.clientY);
           playPad(index);
         });
-        bindPressRelease(surface, tile);
 
         const previousArrow = tile.querySelector(".arrow-left");
         if (previousArrow) {
@@ -615,18 +608,6 @@
       tile.style.setProperty("--by2", visual.by2 + "%");
       tile.style.setProperty("--bx3", visual.bx3 + "%");
       tile.style.setProperty("--by3", visual.by3 + "%");
-    }
-
-    function startPress(tile) {
-      tile.classList.add("is-pressing");
-    }
-
-    function bindPressRelease(button, tile) {
-      const release = () => tile.classList.remove("is-pressing");
-      button.addEventListener("pointerup", release);
-      button.addEventListener("pointercancel", release);
-      button.addEventListener("pointerleave", release);
-      button.addEventListener("blur", release);
     }
 
     function spawnBloom(tile, x, y) {
