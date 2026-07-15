@@ -277,7 +277,7 @@
       right: 0;
       bottom: 0;
       height: 58%;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0) 100%);
+      background: transparent;
     }
 
     .content {
@@ -300,9 +300,9 @@
       max-width: 100%;
       overflow: hidden;
       color: rgba(255, 255, 255, 0.96);
-      font-size: var(--label-size, 14px);
-      font-weight: 600;
-      line-height: 1.14;
+      font-size: 12px;
+      font-weight: 450;
+      line-height: 1.16;
       letter-spacing: 0;
       text-align: center;
       overflow-wrap: anywhere;
@@ -500,9 +500,7 @@
     }
 
     function fitPadText(tile, label) {
-      const length = readableLength(label);
-      const size = length <= 10 ? 17 : length <= 16 ? 15 : length <= 24 ? 13 : length <= 34 ? 11.5 : 10;
-      tile.style.setProperty("--label-size", size + "px");
+      tile.style.setProperty("--label-size", "12px");
     }
 
     function readableLength(value) {
