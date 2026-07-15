@@ -356,6 +356,56 @@
       animation: flip-pulse 380ms cubic-bezier(.3, .9, .4, 1.1);
     }
 
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: rgba(255, 255, 255, 0.92);
+      background:
+        radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.1), transparent 32%),
+        linear-gradient(145deg, rgba(8, 7, 13, 0.88), rgba(20, 17, 31, 0.92));
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    .loading-overlay.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loader {
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-top-color: rgba(255, 255, 255, 0.94);
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+
+    .loading-text {
+      font-size: 12px;
+      font-weight: 450;
+      letter-spacing: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .surface:disabled,
+    .arrow:disabled {
+      cursor: progress;
+    }
+
     .toast {
       position: fixed;
       left: 50%;
@@ -383,8 +433,8 @@
 
     @media (max-width: 390px) {
       .app {
-        padding-left: 10px;
-        padding-right: 10px;
+        padding-left: 0;
+        padding-right: 0;
       }
 
       .content {
@@ -414,6 +464,10 @@
 </head>
 <body>
   <div class="ambient"><span></span><span></span><span></span></div>
+  <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite" aria-label="Loading sounds">
+    <div class="loader" aria-hidden="true"></div>
+    <div class="loading-text" id="loadingText">Loading sounds...</div>
+  </div>
   <main class="app">
     <div class="grid" id="grid" aria-label="Sound pad"></div>
   </main>
@@ -423,8 +477,12 @@
     const data = JSON.parse(document.querySelector("#soundpad-data").textContent);
     const grid = document.querySelector("#grid");
     const toast = document.querySelector("#toast");
+    const loadingOverlay = document.querySelector("#loadingOverlay");
+    const loadingText = document.querySelector("#loadingText");
     const activeSlots = data.pads.map((pad) => Math.max(0, Math.min(pad.activeSlot || 0, pad.slots.length - 1)));
+    const audioCache = new Map();
     let activeAudio = null;
+    let isReady = false;
     let toastTimer = 0;
 
     const TILE_PALETTE = [
@@ -471,24 +529,30 @@
         label.textContent = pad.label;
         surface.setAttribute("aria-label", pad.label + ", " + sound.name);
         surface.title = pad.label + " - " + sound.name;
+        surface.disabled = !isReady;
         fitPadText(tile, pad.label);
         surface.addEventListener("pointerdown", (event) => {
+          if (!isReady) return;
           spawnBloom(tile, event.clientX, event.clientY);
           playPad(index);
         });
 
         const previousArrow = tile.querySelector(".arrow-left");
         if (previousArrow) {
+          previousArrow.disabled = !isReady;
           previousArrow.addEventListener("click", (event) => {
             event.stopPropagation();
+            if (!isReady) return;
             cycle(index, -1, tile, event);
           });
         }
 
         const nextArrow = tile.querySelector(".arrow-right");
         if (nextArrow) {
+          nextArrow.disabled = !isReady;
           nextArrow.addEventListener("click", (event) => {
             event.stopPropagation();
+            if (!isReady) return;
             cycle(index, 1, tile, event);
           });
         }
@@ -658,6 +722,8 @@
     }
 
     function playPad(index) {
+      if (!isReady) return;
+
       const pad = data.pads[index];
       const sound = pad.slots[activeSlots[index]];
 
@@ -666,9 +732,94 @@
         activeAudio.currentTime = 0;
       }
 
-      activeAudio = new Audio(sound.dataUrl);
-      activeAudio.addEventListener("error", () => showToast("This sound could not be played."));
+      activeAudio = audioCache.get(sound.dataUrl) || new Audio(sound.dataUrl);
+      activeAudio.onerror = () => showToast("This sound could not be played.");
       activeAudio.play().catch(() => showToast("Tap again to play."));
+    }
+
+    function getUniqueSounds() {
+      const unique = new Map();
+      data.pads.forEach((pad) => {
+        pad.slots.forEach((sound) => {
+          if (sound && sound.dataUrl && !unique.has(sound.dataUrl)) {
+            unique.set(sound.dataUrl, sound);
+          }
+        });
+      });
+      return [...unique.values()];
+    }
+
+    function updateLoading(loaded, total) {
+      loadingText.textContent = total ? "Loading sounds " + loaded + "/" + total : "Loading sounds...";
+    }
+
+    function preloadSound(sound) {
+      return new Promise((resolve, reject) => {
+        if (audioCache.has(sound.dataUrl)) {
+          resolve();
+          return;
+        }
+
+        const audio = new Audio();
+        let done = false;
+        const timeout = setTimeout(() => finish(false), 15000);
+        const cleanup = () => {
+          clearTimeout(timeout);
+          audio.removeEventListener("canplaythrough", onReady);
+          audio.removeEventListener("loadeddata", onReady);
+          audio.removeEventListener("error", onError);
+        };
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          cleanup();
+          if (ok) {
+            audioCache.set(sound.dataUrl, audio);
+            resolve();
+          } else {
+            reject(new Error("Audio failed to load"));
+          }
+        };
+        const onReady = () => finish(true);
+        const onError = () => finish(false);
+
+        audio.preload = "auto";
+        audio.addEventListener("canplaythrough", onReady);
+        audio.addEventListener("loadeddata", onReady);
+        audio.addEventListener("error", onError);
+        audio.src = sound.dataUrl;
+        audio.load();
+      });
+    }
+
+    async function preloadSounds() {
+      const sounds = getUniqueSounds();
+      let loaded = 0;
+      let failed = 0;
+      grid.setAttribute("aria-busy", "true");
+      updateLoading(loaded, sounds.length);
+
+      await Promise.all(sounds.map((sound) => preloadSound(sound)
+        .then(() => {
+          loaded += 1;
+          updateLoading(loaded + failed, sounds.length);
+        })
+        .catch(() => {
+          failed += 1;
+          updateLoading(loaded + failed, sounds.length);
+        })));
+
+      isReady = true;
+      grid.setAttribute("aria-busy", "false");
+      document.querySelectorAll(".surface, .arrow").forEach((button) => {
+        button.disabled = false;
+      });
+      loadingText.textContent = "Ready";
+      requestAnimationFrame(() => loadingOverlay.classList.add("is-hidden"));
+
+      if (failed) {
+        showToast(failed + " sound" + (failed === 1 ? "" : "s") + " could not load.");
+      }
     }
 
     function showToast(message) {
@@ -679,6 +830,7 @@
     }
 
     render();
+    preloadSounds();
   </script>
 </body>
 </html>
