@@ -580,7 +580,7 @@
         download.disabled = !isReady;
         download.addEventListener("click", () => {
           const selected = pad.slots[activeSlots[index]];
-          downloadFile(selected.dataUrl, selected.name);
+          downloadFile(selected.dataUrl, soundFilename(selected.name, pad.label));
         });
         tile.appendChild(download);
         label.textContent = pad.label;
@@ -896,6 +896,15 @@
       link.remove();
     }
 
+    function soundFilename(name, label) {
+      const basename = name.split(String.fromCharCode(92)).join("/").split("/").pop();
+      const safeLabel = label.replace(/[<>:"/\|?*\x00-\x1f]/g, "_").trim().replace(/[. ]+$/, "") || "Tile";
+      const dot = basename.lastIndexOf(".");
+      const stem = dot > 0 ? basename.slice(0, dot) : basename;
+      const extension = dot > 0 ? basename.slice(dot) : "";
+      return stem + " - " + safeLabel + extension;
+    }
+
     function crc32(bytes) {
       let crc = 0xffffffff;
       for (const byte of bytes) {
@@ -919,8 +928,8 @@
         const response = await fetch(sound.dataUrl);
         if (!response.ok) throw new Error("Could not read sound");
         const bytes = new Uint8Array(await response.arrayBuffer());
-        const basename = sound.name.split(String.fromCharCode(92)).join("/").split("/").pop();
-        const name = encoder.encode(String(index + 1).padStart(2, "0") + " - " + basename);
+        const filename = soundFilename(sound.name, sound.label);
+        const name = encoder.encode(String(index + 1).padStart(2, "0") + " - " + filename);
         const checksum = crc32(bytes);
         const local = new DataView(new ArrayBuffer(30));
         local.setUint32(0, 0x04034b50, true);
@@ -953,7 +962,10 @@
     }
 
     zipDownload.addEventListener("click", async () => {
-      const sounds = data.pads.map((pad, index) => pad.slots[activeSlots[index]]);
+      const sounds = data.pads.map((pad, index) => ({
+        ...pad.slots[activeSlots[index]],
+        label: pad.label
+      }));
       zipDownload.disabled = true;
       zipDownload.textContent = "Preparing ZIP...";
       try {
